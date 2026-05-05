@@ -12,6 +12,10 @@ import '../../../shared/widgets/widgets.dart';
 import '../domain/app_category.dart';
 import 'app_usage_provider.dart';
 
+/// Height for [SliverAppBar.bottom] header (title + period tabs). Must match
+/// the constrained layout inside [_ScreenHeader].
+const double _kAppUsageHeaderHeight = 100;
+
 class AppUsageScreen extends ConsumerStatefulWidget {
   const AppUsageScreen({super.key});
 
@@ -60,10 +64,11 @@ class _AppUsageScreenState extends ConsumerState<AppUsageScreen>
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // ── Hero App Bar ────────────────────────────────────────────────
+          // ── App bar + sticky title/tabs (single pinned sliver avoids
+          //     SliverGeometry layoutExtent > paintExtent with two pins)
           SliverAppBar(
-            expandedHeight: 55,
             pinned: true,
+            toolbarHeight: kToolbarHeight,
             elevation: 0,
             scrolledUnderElevation: 2,
             backgroundColor: AppTheme.primaryTealDark,
@@ -85,7 +90,6 @@ class _AppUsageScreenState extends ConsumerState<AppUsageScreen>
               ),
             ),
             actions: [
-              // Refresh button
               Padding(
                 padding: const EdgeInsets.only(left: AppSpacing.md),
                 child: Material(
@@ -107,13 +111,8 @@ class _AppUsageScreenState extends ConsumerState<AppUsageScreen>
                 ),
               ),
             ],
-           
-          ),
-
-          // ── Sticky title + period tabs ───────────────────────────────────
-          SliverPersistentHeader(
-            pinned: true,
-            delegate: _StickyHeaderDelegate(
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(_kAppUsageHeaderHeight),
               child: _ScreenHeader(
                 period: state.period,
                 onChanged: (p) =>
@@ -616,28 +615,6 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-// ── Sticky header delegate ────────────────────────────────────────────────────
-
-class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
-  const _StickyHeaderDelegate({required this.child});
-  final Widget child;
-
-  static const double _height = 96;
-
-  @override
-  double get minExtent => _height;
-  @override
-  double get maxExtent => _height;
-
-  @override
-  Widget build(
-          BuildContext context, double shrinkOffset, bool overlapsContent) =>
-      child;
-
-  @override
-  bool shouldRebuild(_StickyHeaderDelegate old) => old.child != child;
-}
-
 // ── Screen header (title + period tabs) ──────────────────────────────────────
 
 class _ScreenHeader extends StatelessWidget {
@@ -652,65 +629,78 @@ class _ScreenHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Material(
       color: AppTheme.surfaceColor(context),
-      padding: const EdgeInsets.fromLTRB(
-          AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+      child: SizedBox(
+        height: _kAppUsageHeaderHeight,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg,
+            AppSpacing.sm,
+            AppSpacing.lg,
+            AppSpacing.sm,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'استخدام التطبيقات',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textPrimaryColor(context),
-                ),
-              ),
-              const Spacer(),
-              if (totalMinutes != null && totalMinutes! > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryTeal.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppTheme.primaryTeal.withValues(alpha: 0.25),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'استخدام التطبيقات',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimaryColor(context),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _formatMinutes(totalMinutes!),
-                        style: const TextStyle(
-                          color: AppTheme.primaryTeal,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                  if (totalMinutes != null && totalMinutes! > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryTeal.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppTheme.primaryTeal.withValues(alpha: 0.25),
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'إجمالي',
-                        style: TextStyle(
-                          color: AppTheme.primaryTeal,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _formatMinutes(totalMinutes!),
+                            style: const TextStyle(
+                              color: AppTheme.primaryTeal,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'إجمالي',
+                            style: TextStyle(
+                              color: AppTheme.primaryTeal,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              _PeriodTabBar(current: period, onChanged: onChanged),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          _PeriodTabBar(current: period, onChanged: onChanged),
-        ],
+        ),
       ),
     );
   }
