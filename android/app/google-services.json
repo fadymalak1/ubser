@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "693536509818",
+    "project_id": "ubser-d502c",
+    "storage_bucket": "ubser-d502c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:693536509818:android:e9ebd0f8d62ec9cdc150c3",
+        "android_client_info": {
+          "package_name": "com.example.abser"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCq6fUWVjNdR24vp9QxlNLH5dkTEI--K8k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

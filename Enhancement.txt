@@ -1,0 +1,19 @@
+- Add Report screen (Based on Previous tests)
+- Change Report screen name to "Previous Tests"
+- Add Screen to the result of the test.
+- Make a settings screen and allow to change password
+- Forget Password Feature
+
+-----------------------------------
+- القلق
+- الاكتئاب
+- جودة النوم
+- ال FOMO
+
+
+--------------------------------------
+30/3/2026
+
+- التقرير الذكي يكون بصفحة ال Home
+- 850 + 500 
+
