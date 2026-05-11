@@ -14,19 +14,24 @@ const _kUsageCheckOneOffUnique = 'abser_usage_check_now';
 /// Workmanager callback — runs in a separate isolate when app is in background
 /// or terminated.  Must call ensureInitialized() before using any Flutter
 /// plugins.
+///
+/// IMPORTANT: The `app_usage` plugin (`dk.cachet.app_usage`) requires an
+/// attached `Activity` to read usage stats, which does NOT exist in this
+/// background isolate. Calling it from here will throw
+/// `lateinit property activity has not been initialized`.
+///
+/// Therefore we intentionally skip the AppUsage check here. Overuse alerts
+/// still fire when the user opens the app (see `AppUsageNotifier.load`).
+/// Only the goal reminders run here, since they only need
+/// `flutter_local_notifications` + `shared_preferences` (both isolate-safe).
 @pragma('vm:entry-point')
 void callbackDispatcher() {
   Workmanager().executeTask((taskName, inputData) async {
-    // Required before using any plugin in a background isolate
     WidgetsFlutterBinding.ensureInitialized();
 
     if (taskName == _kUsageCheckTask) {
       try {
         await NotificationService.instance.init();
-        final entries = await const AppUsageService().getTodayUsage();
-        await NotificationService.instance.checkAndAlertOveruse(
-          entries.map((e) => e.toMap()).toList(),
-        );
         await GoalReminderService.checkAndTriggerDueReminders();
       } catch (e) {
         debugPrint('[Workmanager] Task error: $e');

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:app_usage/app_usage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 /// One entry of per-app usage data
 class AppUsageEntry {
@@ -52,6 +53,19 @@ class AppUsageService {
         ..sort((a, b) => b.usageMinutes.compareTo(a.usageMinutes));
 
       return entries;
+    } on PlatformException catch (e) {
+      // The `app_usage` plugin needs an Activity to be attached, which is not
+      // available in background isolates (e.g. WorkManager callback). In that
+      // case the plugin throws "lateinit property activity has not been
+      // initialized" — swallow it silently and return no data.
+      final msg = (e.message ?? '').toLowerCase();
+      final isBackgroundIsolateIssue =
+          msg.contains('lateinit property activity') ||
+              msg.contains('activity has not been initialized');
+      if (kDebugMode && !isBackgroundIsolateIssue) {
+        debugPrint('[AppUsageService] PlatformException: $e');
+      }
+      return [];
     } catch (e) {
       if (kDebugMode) debugPrint('[AppUsageService] Error: $e');
       return [];
