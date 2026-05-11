@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/firebase/firebase_init.dart';
+import 'core/permissions/usage_permission_gate.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/services/fcm_service.dart';
@@ -68,7 +69,7 @@ class UbserApp extends ConsumerWidget {
       builder: (context, child) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: child!,
+          child: UsagePermissionGate(child: child!),
         );
       },
     );
