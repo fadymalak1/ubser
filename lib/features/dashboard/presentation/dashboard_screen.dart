@@ -42,14 +42,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final notifier = ref.read(goalNoteProvider.notifier);
     await notifier.load();
     final goals = ref.read(goalNoteProvider).items;
-    final completedGoal = goals.where((item) => item.progressPercent >= 100);
+    final completedGoals = goals.where((item) => item.progressPercent >= 100).toList();
+    final remainingGoals = goals.where((item) => item.progressPercent < 100).toList();
 
     String? msg;
-    if (completedGoal.isNotEmpty) {
-      final goalText = completedGoal.first.text.trim();
-      msg = goalText.isEmpty
-          ? 'ممتاز! لقد أكملت 100% من أحد أهدافك. استمر بهذا الإنجاز.'
-          : 'ممتاز! لقد أنجزت هدفك: "$goalText" بنسبة 100%.';
+    if (completedGoals.isNotEmpty) {
+      final completedCount = completedGoals.length;
+      final remainingCount = remainingGoals.length;
+      final nextGoals = remainingGoals
+          .map((g) => g.text.trim())
+          .where((t) => t.isNotEmpty)
+          .take(2)
+          .join('، ');
+
+      if (remainingCount == 0) {
+        msg = completedCount == 1
+            ? 'رائع! أنجزت هدفك بالكامل 👏 الآن جاهز تبدأ هدف جديد.'
+            : 'رائع جدًا! أنجزت $completedCount أهداف بالكامل 👏';
+      } else {
+        final nextLine = nextGoals.isEmpty ? '' : '\nالتالي: $nextGoals';
+        msg =
+            'ممتاز! أنجزت $completedCount هدف${completedCount > 1 ? 'ات' : ''}.\n'
+            'متبقي عليك $remainingCount هدف${remainingCount > 1 ? 'ات' : ''}، كمل بنفس الحماس 💪$nextLine';
+      }
     } else {
       msg = await notifier.buildEntryCheckInMessage();
     }

@@ -43,15 +43,19 @@ class GoalNoteNotifier extends StateNotifier<GoalNoteState> {
     return (itemId.hashCode.abs() % 800000) + 10000;
   }
 
-  Future<void> _syncReminderNotification(GoalNoteItem item) async {
+  Future<void> _syncReminderNotification(
+    GoalNoteItem item, {
+    List<GoalNoteItem>? itemsContext,
+  }) async {
     final id = _notificationId(item.id);
     await NotificationService.instance.cancelNotification(id);
     if (!item.reminderEnabled) {
       return;
     }
 
+    final items = itemsContext ?? state.items;
     final title = 'تذكير أهدافك';
-    final body = item.text.trim().isEmpty ? 'لديك هدف جديد' : item.text;
+    final body = _buildReminderBody(item, items);
     if (item.repeat == GoalReminderRepeat.daily) {
       await NotificationService.instance.scheduleDailyNotification(
         id: id,
@@ -75,6 +79,17 @@ class GoalNoteNotifier extends StateNotifier<GoalNoteState> {
     );
   }
 
+  String _buildReminderBody(GoalNoteItem current, List<GoalNoteItem> allItems) {
+    final goalText = current.text.trim().isEmpty ? 'لديك هدف جديد' : current.text.trim();
+    final remaining = allItems
+        .where((e) => e.id != current.id && e.text.trim().isNotEmpty && e.progressPercent < 100)
+        .length;
+    if (remaining <= 0) {
+      return goalText;
+    }
+    return '$goalText\nوتذكير: متبقي $remaining من أهدافك، كمل بنفس القوة 💪';
+  }
+
   Future<void> load() async {
     try {
       state = state.copyWith(isLoading: true, error: null);
@@ -82,7 +97,7 @@ class GoalNoteNotifier extends StateNotifier<GoalNoteState> {
       final items = GoalNoteStorage.load(prefs);
       for (final item in items) {
         try {
-          await _syncReminderNotification(item);
+          await _syncReminderNotification(item, itemsContext: items);
         } catch (_) {
           // Never block loading goals if reminder scheduling fails.
         }

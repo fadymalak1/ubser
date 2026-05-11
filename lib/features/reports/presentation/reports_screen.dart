@@ -335,6 +335,14 @@ class _ReportCard extends StatelessWidget {
     final scores = data['psychological_scores'] as Map<String, dynamic>? ?? {};
     final riskColor = AppTheme.riskColor(riskLevel);
     final riskLightColor = AppTheme.riskLightColorFor(context, riskLevel);
+    final anxietyScore = _normalizeToFive(scores['anxiety'], oldMax: 6);
+    final depressionScore = _normalizeToFive(scores['depression'], oldMax: 6);
+    final fomoScore = _normalizeToFive(scores['fomo'], oldMax: 20);
+    final sleepScore = _normalizeToFive(scores['sleep'], oldMax: 12);
+    final recommendations = (ai['recommendations'] as List<dynamic>? ?? const [])
+        .map((e) => e.toString().trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
 
     return AppCard(
       padding: EdgeInsets.zero,
@@ -464,30 +472,108 @@ class _ReportCard extends StatelessWidget {
                 _ScoreBar(
                   label: 'القلق',
                   icon: Icons.mood_bad_rounded,
-                  value: scores['anxiety'] as int? ?? 0,
-                  max: 6,
+                  value: anxietyScore,
+                  max: 5,
+                  onTap: () => _showAiTipsDialog(
+                    context,
+                    title: 'نصائح AI - القلق',
+                    score: anxietyScore,
+                    recommendations: recommendations,
+                  ),
                 ),
                 _ScoreBar(
                   label: 'الاكتئاب',
                   icon: Icons.cloud_outlined,
-                  value: scores['depression'] as int? ?? 0,
-                  max: 6,
+                  value: depressionScore,
+                  max: 5,
+                  onTap: () => _showAiTipsDialog(
+                    context,
+                    title: 'نصائح AI - الاكتئاب',
+                    score: depressionScore,
+                    recommendations: recommendations,
+                  ),
                 ),
                 _ScoreBar(
                   label: 'FoMO',
                   icon: Icons.notifications_active_outlined,
-                  value: scores['fomo'] as int? ?? 0,
-                  max: 20,
+                  value: fomoScore,
+                  max: 5,
+                  onTap: () => _showAiTipsDialog(
+                    context,
+                    title: 'نصائح AI - FoMO',
+                    score: fomoScore,
+                    recommendations: recommendations,
+                  ),
                 ),
                 _ScoreBar(
                   label: 'جودة النوم',
                   icon: Icons.bedtime_outlined,
-                  value: scores['sleep'] as int? ?? 0,
-                  max: 12,
+                  value: sleepScore,
+                  max: 5,
+                  onTap: () => _showAiTipsDialog(
+                    context,
+                    title: 'نصائح AI - جودة النوم',
+                    score: sleepScore,
+                    recommendations: recommendations,
+                  ),
                 ),
 
              ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  int _normalizeToFive(dynamic raw, {required int oldMax}) {
+    final value = (raw as num?)?.toDouble() ?? 0;
+    if (oldMax <= 0) return 0;
+    final normalized = (value / oldMax) * 5.0;
+    return normalized.round().clamp(0, 5);
+  }
+
+  Future<void> _showAiTipsDialog(
+    BuildContext context, {
+    required String title,
+    required int score,
+    required List<String> recommendations,
+  }) async {
+    final intro = switch (score) {
+      >= 4 => 'المؤشر مرتفع نسبيًا. الأفضل تبدأ بخطوات عملية من اليوم.',
+      >= 2 => 'المؤشر متوسط. في مجال واضح للتحسن بخطة بسيطة وثابتة.',
+      _ => 'المؤشر جيد، حافظ على العادات الصحية الحالية.',
+    };
+    final tips = recommendations.isEmpty
+        ? const <String>[
+            'نظّم وقت الشاشة اليومي وحدد فترات راحة قصيرة.',
+            'ابتعد عن الهاتف قبل النوم بمدة كافية.',
+            'حافظ على روتين يومي بسيط يمكن الالتزام به.',
+          ]
+        : recommendations;
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(intro),
+              const SizedBox(height: 10),
+              ...tips.map((tip) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Text('• $tip'),
+                  )),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('إغلاق'),
           ),
         ],
       ),
@@ -503,12 +589,14 @@ class _ScoreBar extends StatelessWidget {
     required this.icon,
     required this.value,
     required this.max,
+    required this.onTap,
   });
 
   final String label;
   final IconData icon;
   final int value;
   final int max;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -524,40 +612,51 @@ class _ScoreBar extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: barColor),
-          const SizedBox(width: 8),
-          SizedBox(
-            width: 72,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(10),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+            child: Row(
+              children: [
+                Icon(icon, size: 16, color: barColor),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 72,
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                   ),
+                ),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: ratio,
+                      minHeight: 8,
+                      backgroundColor: AppTheme.borderColorFor(context),
+                      valueColor: AlwaysStoppedAnimation<Color>(barColor),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$value/$max',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: barColor,
+                  ),
+                ),
+              ],
             ),
           ),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: ratio,
-                minHeight: 8,
-                backgroundColor: AppTheme.borderColorFor(context),
-                valueColor: AlwaysStoppedAnimation<Color>(barColor),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '$value/$max',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: barColor,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

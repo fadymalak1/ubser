@@ -168,6 +168,8 @@ class _GoalNoteScreenState extends ConsumerState<GoalNoteScreen> {
             weeklyWeekday: payload.weeklyWeekday,
           );
     } else {
+      final wasDone = initial.progressPercent >= 100;
+      final isDoneNow = payload.progressPercent >= 100;
       await ref.read(goalNoteProvider.notifier).update(
             initial.copyWith(
               text: payload.text,
@@ -180,6 +182,19 @@ class _GoalNoteScreenState extends ConsumerState<GoalNoteScreen> {
               weeklyWeekday: payload.weeklyWeekday,
             ),
           );
+
+      if (!mounted) return;
+      if (!wasDone && isDoneNow) {
+        final items = ref.read(goalNoteProvider).items;
+        final remaining = items.where((e) => e.progressPercent < 100).length;
+        final message = remaining == 0
+            ? 'ممتاز! أنجزت كل أهدافك الحالية 👏'
+            : 'أحسنت! أنهيت هذا الهدف، ومتَبقي $remaining هدف. خلّيك مستمر 💪';
+        ScaffoldMessenger.of(this.context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+        return;
+      }
     }
 
     if (!mounted) return;
