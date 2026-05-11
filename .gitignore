@@ -20,5 +20,8 @@ ios/Flutter/.last_build_id
 # macOS
 .DS_Store
 
-# Env
+# Env / secrets
 .env
+.env.*
+secrets.json
+**/secrets.local.dart

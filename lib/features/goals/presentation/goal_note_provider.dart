@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../../core/services/gemini_service.dart';
 import '../../../core/services/notification_service.dart';
+import '../../dashboard/presentation/dashboard_provider.dart';
 import '../data/goal_note_storage.dart';
 import '../domain/goal_note_item.dart';
 
@@ -35,12 +36,8 @@ class GoalNoteNotifier extends StateNotifier<GoalNoteState> {
 
   final Ref _ref;
   bool _reminderShownInSession = false;
-  final GeminiService _gemini = GeminiService(
-    apiKey: const String.fromEnvironment(
-      'GEMINI_API_KEY',
-      defaultValue: 'AIzaSyDPV7z7A4Oa28knoNb-cqArcgChtmhfFrU',
-    ),
-  );
+
+  GeminiService get _gemini => _ref.read(geminiServiceProvider);
 
   int _notificationId(String itemId) {
     return (itemId.hashCode.abs() % 800000) + 10000;

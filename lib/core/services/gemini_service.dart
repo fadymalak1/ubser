@@ -7,32 +7,48 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 class GeminiService {
   GeminiService({String? apiKey})
       : _apiKey = apiKey ?? '',
-        _model = GenerativeModel(
-          // `gemini-1.5-flash` is no longer valid on v1beta; use a current model id.
-          model: 'gemini-2.0-flash',
-          apiKey: apiKey ?? '',
-        );
-
+        _model = ((apiKey ?? '').isEmpty)
+            ? null
+            : GenerativeModel(
+                // `gemini-1.5-flash` is no longer valid on v1beta.
+                model: 'gemini-2.5-flash',
+                apiKey: apiKey!,
+              );
 
   final String _apiKey;
-  final GenerativeModel _model;
+  // Null when no key is configured so we never even hit the network.
+  final GenerativeModel? _model;
+
+  bool get _isUsable => _apiKey.isNotEmpty && _model != null;
+
+  // Recognises the specific "API key reported as leaked / invalid" responses
+  // so we can fail silently without spamming the logs every call.
+  bool _isLeakedKeyError(Object e) {
+    final s = e.toString().toLowerCase();
+    return s.contains('reported as leaked') ||
+        s.contains('api key not valid') ||
+        s.contains('api_key_invalid') ||
+        s.contains('invalid api key');
+  }
 
   Future<Map<String, dynamic>> analyzeRisk({
     required Map<String, int> psychologicalScores,
     required Map<String, dynamic> behavioralMetrics,
   }) async {
-    if (_apiKey.isEmpty) {
+    if (!_isUsable) {
       return _fallbackAnalysis(psychologicalScores, behavioralMetrics);
     }
 
     try {
       final prompt = _buildPrompt(psychologicalScores, behavioralMetrics);
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final response = await _model!.generateContent([Content.text(prompt)]);
       final text = response.text ?? '';
 
       return _parseResponse(text, psychologicalScores, behavioralMetrics);
     } catch (e) {
-      if (kDebugMode) debugPrint('Gemini API error: $e');
+      if (kDebugMode && !_isLeakedKeyError(e)) {
+        debugPrint('Gemini API error: $e');
+      }
       return _fallbackAnalysis(psychologicalScores, behavioralMetrics);
     }
   }
@@ -41,10 +57,7 @@ class GeminiService {
     required List<Map<String, dynamic>> goals,
   }) async {
     if (goals.isEmpty) return '';
-
-    if (_apiKey.isEmpty) {
-      return _fallbackGoalCheckIn(goals);
-    }
+    if (!_isUsable) return _fallbackGoalCheckIn(goals);
 
     try {
       final prompt = '''
@@ -61,7 +74,7 @@ class GeminiService {
 ${jsonEncode(goals)}
 ''';
 
-      final response = await _model.generateContent([Content.text(prompt)]);
+      final response = await _model!.generateContent([Content.text(prompt)]);
       final text = response.text?.trim() ?? '';
       if (text.isEmpty) return _fallbackGoalCheckIn(goals);
       return text;
@@ -131,13 +144,13 @@ ${jsonEncode(goals)}
       return 'لا توجد تقييمات سابقة لإنشاء التقرير.';
     }
 
-    if (_apiKey.isEmpty) {
+    if (!_isUsable) {
       return _fallbackReportFromAssessments(assessments);
     }
 
     try {
       final prompt = _buildReportPrompt(assessments, periodLabelAr: periodLabelAr);
-      final response = await _model.generateContent(
+      final response = await _model!.generateContent(
         [Content.text(prompt)],
         generationConfig: GenerationConfig(
           maxOutputTokens: 8192,
@@ -147,7 +160,9 @@ ${jsonEncode(goals)}
       final text = response.text?.trim() ?? '';
       return text.isNotEmpty ? text : _fallbackReportFromAssessments(assessments);
     } catch (e) {
-      if (kDebugMode) debugPrint('Gemini report error: $e');
+      if (kDebugMode && !_isLeakedKeyError(e)) {
+        debugPrint('Gemini report error: $e');
+      }
       return _fallbackReportFromAssessments(assessments);
     }
   }

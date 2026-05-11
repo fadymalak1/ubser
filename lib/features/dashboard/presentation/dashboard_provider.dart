@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/app_secrets.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/assessment_service.dart';
@@ -189,12 +190,7 @@ final assessmentServiceProvider = Provider<AssessmentService>((ref) {
 });
 
 final geminiServiceProvider = Provider<GeminiService>((ref) {
-  return GeminiService(
-    apiKey: const String.fromEnvironment(
-      'GEMINI_API_KEY',
-      defaultValue: 'AIzaSyDPV7z7A4Oa28knoNb-cqArcgChtmhfFrU',
-    ),
-  );
+  return GeminiService(apiKey: "AIzaSyA_wKN1yrp0P5GIw1zUpYYKo0i5t5TDUS4");
 });
 
 final dashboardProvider =
