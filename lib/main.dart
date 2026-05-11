@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -16,6 +17,11 @@ import 'features/app_usage/presentation/app_usage_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load `.env` (bundled as a Flutter asset). `isOptional: true` so the app
+  // still boots even if the file is missing — the user will simply see the
+  // "missing API key" message in the AI report screen.
+  await dotenv.load(fileName: '.env', isOptional: true);
 
   // Allow google_fonts to fetch & cache IBM Plex Sans Arabic on first run
   GoogleFonts.config.allowRuntimeFetching = true;

@@ -1,28 +1,43 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 /// Central place for runtime secrets (API keys).
 ///
-/// IMPORTANT:
-/// Never hardcode real API keys here. Google scans public repositories and
-/// will automatically disable any key that gets pushed in source.
+/// Keys are loaded with this priority:
+///   1. `--dart-define=GEMINI_API_KEY=...` (highest — useful for CI/CD)
+///   2. The `.env` file bundled as an asset (loaded by `dotenv.load()` in
+///      `main()` before `runApp`)
+///   3. Empty string — every Gemini call then surfaces a clear error to the
+///      user instead of silently failing.
 ///
-/// Inject the Gemini key at build/run time via `--dart-define`:
-///
-///   flutter run --dart-define=GEMINI_API_KEY=YOUR_NEW_KEY
-///   flutter build apk --dart-define=GEMINI_API_KEY=YOUR_NEW_KEY
-///
-/// When the key is missing, [AppSecrets.geminiApiKey] returns an empty
-/// string and every Gemini call gracefully falls back to offline logic.
+/// SECURITY:
+/// Never hardcode real keys in source. Google scans public repositories and
+/// will auto-disable any key that gets pushed. The `.env` file is in
+/// `.gitignore` and is the recommended local store.
 class AppSecrets {
   const AppSecrets._();
 
-  /// Gemini API key (Google AI Studio).
-  ///
-  /// Returns an empty string when not provided so the app keeps running
-  /// without crashing — the AI features simply use their offline fallbacks.
-  static const String geminiApiKey = String.fromEnvironment(
+  /// `--dart-define` takes priority over the `.env` file.
+  static const String _dartDefineGeminiKey = String.fromEnvironment(
     'GEMINI_API_KEY',
     defaultValue: '',
   );
 
-  /// True only when a non-empty Gemini key has been injected.
+  /// Gemini API key (Google AI Studio).
+  ///
+  /// Returns an empty string when not provided. UI layers should treat the
+  /// empty case as "missing key" and show a clear message.
+  static String get geminiApiKey {
+    if (_dartDefineGeminiKey.isNotEmpty) {
+      return _dartDefineGeminiKey;
+    }
+    try {
+      final fromEnv = dotenv.maybeGet('GEMINI_API_KEY') ?? '';
+      return fromEnv.trim();
+    } catch (_) {
+      // dotenv was not initialised yet (or .env asset missing). Treat as empty.
+      return '';
+    }
+  }
+
   static bool get hasGeminiKey => geminiApiKey.isNotEmpty;
 }

@@ -1,7 +1,22 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+
+/// Thrown by [GeminiService] when an *interactive* AI call (e.g. generating a
+/// report) fails and the UI should surface a clear, user-friendly message
+/// instead of silently using a fallback.
+class GeminiServiceException implements Exception {
+  GeminiServiceException(this.userMessage, {this.cause});
+
+  /// Arabic message safe to display directly in the UI.
+  final String userMessage;
+  final Object? cause;
+
+  @override
+  String toString() => 'GeminiServiceException: $userMessage';
+}
 
 /// Service to analyze psychological + behavioral data via Gemini AI
 class GeminiService {
@@ -145,7 +160,10 @@ ${jsonEncode(goals)}
     }
 
     if (!_isUsable) {
-      return _fallbackReportFromAssessments(assessments);
+      throw GeminiServiceException(
+        'لا يوجد مفتاح Gemini مُهيّأ في التطبيق. '
+        'افتح ملف .env وأضف قيمة GEMINI_API_KEY، ثم أعد تشغيل التطبيق.',
+      );
     }
 
     try {
@@ -158,13 +176,44 @@ ${jsonEncode(goals)}
         ),
       );
       final text = response.text?.trim() ?? '';
-      return text.isNotEmpty ? text : _fallbackReportFromAssessments(assessments);
-    } catch (e) {
-      if (kDebugMode && !_isLeakedKeyError(e)) {
-        debugPrint('Gemini report error: $e');
+      if (text.isEmpty) {
+        throw GeminiServiceException(
+          'لم يُرجِع Gemini أي نص. حاول مرة أخرى بعد قليل.',
+        );
       }
-      return _fallbackReportFromAssessments(assessments);
+      return text;
+    } on GeminiServiceException {
+      rethrow;
+    } catch (e) {
+      if (kDebugMode) debugPrint('Gemini report error: $e');
+      throw GeminiServiceException(_userMessageFor(e), cause: e);
     }
+  }
+
+  /// Translates raw Gemini SDK / network errors into a short Arabic message
+  /// suitable for display in a dialog or error card.
+  String _userMessageFor(Object e) {
+    if (e is SocketException ||
+        e.toString().toLowerCase().contains('socketexception') ||
+        e.toString().toLowerCase().contains('failed host lookup')) {
+      return 'تعذّر الاتصال بخوادم الذكاء الاصطناعي. تأكد من اتصالك بالإنترنت ثم حاول مجددًا.';
+    }
+    if (_isLeakedKeyError(e)) {
+      return 'مفتاح Gemini الحالي تم الإبلاغ عنه كمسرّب وعطّلته Google. '
+          'أنشئ مفتاحًا جديدًا من Google AI Studio وضعه في ملف .env ثم أعد تشغيل التطبيق.';
+    }
+    final s = e.toString().toLowerCase();
+    if (s.contains('quota') || s.contains('rate limit') || s.contains('429')) {
+      return 'تم تجاوز الحد المسموح به مؤقتًا من Gemini. حاول مرة أخرى بعد قليل.';
+    }
+    if (s.contains('permission') || s.contains('403')) {
+      return 'مفتاح Gemini لا يملك صلاحية الوصول إلى هذا الموديل. '
+          'تأكد من تفعيل Gemini API على مشروع Google Cloud.';
+    }
+    if (s.contains('not found') || s.contains('404')) {
+      return 'الموديل المطلوب غير متاح حاليًا. يرجى المحاولة لاحقًا.';
+    }
+    return 'حدث خطأ غير متوقع أثناء توليد التقرير. حاول مرة أخرى بعد قليل.';
   }
 
   String _buildReportPrompt(
@@ -233,38 +282,6 @@ ${jsonEncode(goals)}
     }
     buffer.writeln(
       'اكتب التقرير النهائي بالعربية فقط، بدون JSON، مع التزام كامل بهيكل Markdown والعناوين أعلاه. اكتب محتوى حقيقياً تحت كل عنوان (لا تنسخ جمل التعليمات حرفياً). كن مفصلاً: الهدف أن يخرج المستخدم بفهم أعمق وتقرير منظم وقابل للقراءة.',
-    );
-    return buffer.toString();
-  }
-
-  String _fallbackReportFromAssessments(List<Map<String, dynamic>> assessments) {
-    final buffer = StringBuffer();
-    buffer.writeln(
-      'تقرير تلقائي (بدون اتصال بالذكاء الاصطناعي) بناءً على ${assessments.length} تقييم(ات) سابق(ة).\n',
-    );
-    var highCount = 0;
-    var lowCount = 0;
-    for (final a in assessments) {
-      final ai = a['ai_result'] as Map<String, dynamic>? ?? {};
-      final level = (ai['risk_level'] as String? ?? '').toLowerCase();
-      if (level == 'high') highCount++;
-      if (level == 'low') lowCount++;
-    }
-    buffer.writeln(
-      '\n## ملخص تنفيذي\n'
-      'هذا تقرير تلقائي بدون اتصال بالذكاء الاصطناعي؛ للتقرير المفصّل والمنظم فعّل مفتاح Gemini في التطبيق.\n'
-      '\n## ملاحظات حول السجل\n'
-      '- عدد التقييمات عالية المخاطر: $highCount\n'
-      '- عدد التقييمات منخفضة المخاطر: $lowCount\n'
-      '\n## توصيات عامة\n'
-      '- جرّب تحديد ساعات «خالية من الهاتف» يومياً، وابدأ بفترة قصيرة ثم زِدها تدريجياً.\n'
-      '- قلّل الإضاءة والإشعارات قبل النوم، وضع الجهاز خارج غرفة النوم إن أمكن.\n'
-      '- راقب وقت الشاشة أسبوعياً ولاحظ أي ارتباط بين الأيام الصعبة وزيادة الاستخدام.\n'
-      '- خصّص وقتاً لأنشطة بدون شاشة (مشي، قراءة ورقية، محادثة وجهاً لوجه).\n'
-      '\n## متى يُفضّل طلب دعم مهني\n'
-      'إذا تكررت المستويات العالية أو شعرت بضيق شديد، يُفضّل طلب دعم من مختص صحة نفسية.\n'
-      '\n## تنويه\n'
-      'لتحليل مفصّل ومنظم بالذكاء الاصطناعي، تأكد من ضبط مفتاح واجهة Gemini في التطبيق.',
     );
     return buffer.toString();
   }

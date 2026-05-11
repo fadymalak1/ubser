@@ -91,10 +91,15 @@ class ReportNotifier extends StateNotifier<ReportState> {
         error: null,
         lastReportTimeRange: range,
       );
+    } on GeminiServiceException catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.userMessage,
+      );
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        error: e.toString(),
+        error: 'تعذّر إنشاء التقرير. حاول مرة أخرى بعد قليل.',
       );
     }
   }
