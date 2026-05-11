@@ -7,6 +7,7 @@ import '../../features/auth/presentation/register_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/goals/presentation/goal_note_screen.dart';
 import '../../features/reports/presentation/ai_generated_report_screen.dart';
+import '../../features/reports/presentation/ai_report_history_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/settings/presentation/change_password_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
@@ -25,6 +26,7 @@ class AppRoutes {
   static const String survey = '/survey';
   static const String reports = '/reports';
   static const String aiGeneratedReport = '/ai-generated-report';
+  static const String aiReportHistory = '/ai-report-history';
   static const String appUsage = '/app-usage';
   static const String testResult = '/test-result';
   static const String settings = '/settings';
@@ -116,6 +118,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.appUsage,
       builder: (context, state) => const AppUsageScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.aiReportHistory,
+      builder: (context, state) => const AiReportHistoryScreen(),
     ),
     GoRoute(
       path: AppRoutes.settings,

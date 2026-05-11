@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_spacing.dart';
+import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../domain/report_time_range.dart';
 import 'report_provider.dart';
@@ -65,7 +66,10 @@ class _AiGeneratedReportScreenState extends ConsumerState<AiGeneratedReportScree
 
     return Scaffold(
       backgroundColor: AppTheme.surfaceColor(context),
-      appBar: _StaticReportAppBar(onBack: () => context.pop()),
+      appBar: _StaticReportAppBar(
+        onBack: () => context.pop(),
+        onHistory: () => context.push(AppRoutes.aiReportHistory),
+      ),
       body: Stack(
         children: [
           _AmbientBackground(isDark: isDark),
@@ -136,9 +140,10 @@ class _AiGeneratedReportScreenState extends ConsumerState<AiGeneratedReportScree
 
 /// Fixed-height header (does not scroll or collapse with content).
 class _StaticReportAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _StaticReportAppBar({required this.onBack});
+  const _StaticReportAppBar({required this.onBack, required this.onHistory});
 
   final VoidCallback onBack;
+  final VoidCallback onHistory;
 
   static const _gradient = BoxDecoration(
     gradient: LinearGradient(
@@ -232,6 +237,39 @@ class _StaticReportAppBar extends StatelessWidget implements PreferredSizeWidget
                         ),
                       ),
                     ],
+                  ),
+                ),
+                Material(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: onHistory,
+                    borderRadius: BorderRadius.circular(12),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.history_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            'السابقة',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ],

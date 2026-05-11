@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/assessment_service.dart';
 import '../../../core/services/gemini_service.dart';
 import '../../dashboard/presentation/dashboard_provider.dart';
+import '../data/ai_report_history_service.dart';
 import '../domain/report_time_range.dart';
 
 class ReportState {
@@ -39,11 +41,13 @@ class ReportNotifier extends StateNotifier<ReportState> {
   ReportNotifier(
     this._assessmentService,
     this._geminiService,
+    this._historyService,
     this._ref,
   ) : super(const ReportState());
 
   final AssessmentService _assessmentService;
   final GeminiService _geminiService;
+  final AiReportHistoryService _historyService;
   final Ref _ref;
 
   Future<void> generateReport(ReportTimeRange range) async {
@@ -85,6 +89,23 @@ class ReportNotifier extends StateNotifier<ReportState> {
         serialized,
         periodLabelAr: range.labelAr,
       );
+
+      // Persist the freshly generated report so the user can re-open it
+      // later from the history screen. Failure to save must NOT block the
+      // UI from showing the report — just log and move on.
+      try {
+        await _historyService.saveReport(
+          userId: userId,
+          reportText: report,
+          periodLabelAr: range.labelAr,
+          periodStart: bounds.$1,
+          periodEnd: bounds.$2,
+          assessmentsCount: list.length,
+        );
+      } catch (e) {
+        if (kDebugMode) debugPrint('[ReportNotifier] save history failed: $e');
+      }
+
       state = state.copyWith(
         reportText: report,
         isLoading: false,
@@ -109,11 +130,16 @@ class ReportNotifier extends StateNotifier<ReportState> {
   }
 }
 
+final aiReportHistoryServiceProvider = Provider<AiReportHistoryService>((ref) {
+  return AiReportHistoryService(FirebaseFirestore.instance);
+});
+
 final reportProvider =
     StateNotifierProvider<ReportNotifier, ReportState>((ref) {
   return ReportNotifier(
     ref.watch(assessmentServiceProvider),
     ref.watch(geminiServiceProvider),
+    ref.watch(aiReportHistoryServiceProvider),
     ref,
   );
 });

@@ -11,6 +11,7 @@ class AppConstants {
   static const String usersCollection = 'users';
   static const String assessmentsCollection = 'assessments';
   static const String feedbackCollection = 'feedback';
+  static const String aiReportsCollection = 'ai_reports';
 
   // Risk levels (English for API/Firestore, Arabic for display)
   static const String riskLow = 'Low';
